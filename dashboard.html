@@ -288,7 +288,7 @@
             userEmailDisplay.innerText = user.email;
             
             // Extraer el tenant_id de los metadatos del usuario creado en Supabase Auth
-            currentTenantId = user.user_metadata?.tenant_id || "demo-clinica"; 
+            currentTenantId = "demo-clinica"; 
             document.getElementById('tenant-slug').innerText = `Tenant: ${currentTenantId}`;
             
             // Disparar las lecturas en vivo
