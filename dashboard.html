@@ -267,34 +267,86 @@
     </main>
 
     <script>
-        // Inicializar los iconos de Lucide cargados por CDN
+        // 1. INICIALIZAR SUPABASE (Asegúrate de poner tus claves reales aquí)
+        const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co';
+        const SUPABASE_KEY = 'TU_ANON_KEY';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Variables Globales
+        let currentTenantId = null;
+
+        // Elementos del DOM
+        const loginOverlay = document.getElementById('login-overlay');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const loginBtn = document.getElementById('login-btn');
+        const userEmailDisplay = document.getElementById('user-email');
+
+        // Inicializar iconos visuales
         lucide.createIcons();
 
-        // Función para cambiar de pestaña de forma reactiva y limpia
-        function switchTab(tabId) {
-            // 1. Ocultar todos los contenidos de pestaña
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-
-            // 2. Mostrar la pestaña seleccionada
-            const targetTab = document.getElementById(`tab-${tabId}`);
-            if (targetTab) {
-                targetTab.classList.add('active');
+        // 2. SISTEMA DE AUTENTICACIÓN Y ARRANQUE
+        async function checkSession() {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (session) {
+                unlockDashboard(session.user);
             }
+        }
 
-            // 3. Resetear estilos de todos los botones de la navegación
+        function unlockDashboard(user) {
+            loginOverlay.style.opacity = '0';
+            setTimeout(() => loginOverlay.style.display = 'none', 300);
+            userEmailDisplay.innerText = user.email;
+            
+            // Capturar el ID del negocio
+            currentTenantId = user.user_metadata?.tenant_id || "default_tenant"; 
+            document.getElementById('tenant-slug').innerText = `Tenant: ${currentTenantId}`;
+            
+            // Cargar los datos de las tablas
+            cargarDatosAdmin();
+            cargarDatosSlots();
+        }
+
+        loginForm?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginBtn.innerText = 'Verificando...';
+            loginBtn.disabled = true;
+            loginError.classList.add('hidden');
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                loginError.innerText = "Credenciales incorrectas.";
+                loginError.classList.remove('hidden');
+                loginBtn.innerText = 'Ingresar al Dashboard';
+                loginBtn.disabled = false;
+            } else {
+                unlockDashboard(data.user);
+            }
+        });
+
+        document.getElementById('btn-logout')?.addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            window.location.reload();
+        });
+
+        // 3. NAVEGACIÓN ENTRE PESTAÑAS
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`)?.classList.add('active');
+
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.className = "nav-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors hover:bg-slate-800 hover:text-white text-slate-400";
             });
 
-            // 4. Aplicar el estilo activo al botón presionado
             const activeBtn = document.getElementById(`btn-${tabId}`);
             if (activeBtn) {
                 activeBtn.className = "nav-btn active w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors bg-indigo-600 text-white hover:bg-indigo-700";
             }
 
-            // 5. Actualizar dinámicamente el título en la barra superior
             const titles = {
                 'calendario': 'Calendario Global',
                 'slots': 'Configuración de Slots de Disponibilidad',
@@ -305,9 +357,97 @@
             document.getElementById('page-title').innerText = titles[tabId] || 'Dashboard';
         }
 
-        // Datos Mock transitorios para validar la maquetación inicial en Vercel
-        document.getElementById('user-email').innerText = "recepcion@clinica.com";
-        document.getElementById('tenant-slug').innerText = "Tenant: clinica-dental-xyz";
+        // 4. LÓGICA DEL MÓDULO ADMIN
+        async function cargarDatosAdmin() {
+            if (!currentTenantId) return;
+
+            const { data: profesionales } = await supabase.from('profesionales').select('*');
+            if (profesionales) {
+                document.getElementById('tabla-profesionales').innerHTML = profesionales.map(p => `
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="p-3 font-medium text-slate-900">${p.nombre}</td>
+                        <td class="p-3 text-slate-500">${p.rol || p.especialidad || ''}</td>
+                    </tr>
+                `).join('');
+            }
+
+            const { data: servicios } = await supabase.from('servicios').select('*');
+            if (servicios) {
+                document.getElementById('tabla-servicios').innerHTML = servicios.map(s => `
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="p-3 font-medium text-slate-900">${s.nombre}</td>
+                        <td class="p-3 text-slate-500">${s.duracion} min</td>
+                        <td class="p-3 font-semibold text-slate-900">$${s.precio}</td>
+                    </tr>
+                `).join('');
+            }
+            lucide.createIcons();
+        }
+
+        document.getElementById('form-profesional')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nombre = document.getElementById('prof-nombre').value;
+            const rol = document.getElementById('prof-rol').value;
+            const { error } = await supabase.from('profesionales').insert([{ nombre, rol, tenant_id: currentTenantId }]);
+            if (!error) { document.getElementById('form-profesional').reset(); cargarDatosAdmin(); cargarDatosSlots(); }
+        });
+
+        document.getElementById('form-servicio')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nombre = document.getElementById('serv-nombre').value;
+            const precio = parseFloat(document.getElementById('serv-precio').value);
+            const duracion = parseInt(document.getElementById('serv-duracion').value);
+            const { error } = await supabase.from('servicios').insert([{ nombre, precio, duracion, tenant_id: currentTenantId }]);
+            if (!error) { document.getElementById('form-servicio').reset(); cargarDatosAdmin(); }
+        });
+
+        // 5. LÓGICA DEL MÓDULO SLOTS
+        async function cargarDatosSlots() {
+            if (!currentTenantId) return;
+
+            const { data: profesionales } = await supabase.from('profesionales').select('id, nombre');
+            if (profesionales) {
+                const selectProf = document.getElementById('slot-profesional');
+                selectProf.innerHTML = '<option value="">Selecciona un profesional...</option>' + 
+                    profesionales.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+            }
+
+            const { data: horarios } = await supabase.from('horarios_trabajo').select('id, dia_semana, hora_inicio, hora_fin, duracion_bloque, profesionales(nombre)');
+            if (horarios) {
+                document.getElementById('tabla-slots').innerHTML = horarios.map(h => `
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="p-3 font-medium text-slate-900">${h.profesionales?.nombre || 'General'}</td>
+                        <td class="p-3 text-slate-600">${h.dia_semana}</td>
+                        <td class="p-3 text-slate-500">${h.hora_inicio.substring(0,5)} a ${h.hora_fin.substring(0,5)}</td>
+                        <td class="p-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">${h.duracion_bloque} min</span></td>
+                    </tr>
+                `).join('');
+            }
+            lucide.createIcons();
+        }
+
+        document.getElementById('form-slots')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const profesional_id = document.getElementById('slot-profesional').value;
+            const dia_semana = document.getElementById('slot-dia').value;
+            const hora_inicio = document.getElementById('slot-inicio').value;
+            const hora_fin = document.getElementById('slot-fin').value;
+            const duracion_bloque = parseInt(document.getElementById('slot-duracion').value);
+
+            const { error } = await supabase.from('horarios_trabajo').insert([{ 
+                profesional_id, dia_semana, hora_inicio, hora_fin, duracion_bloque, tenant_id: currentTenantId 
+            }]);
+
+            if (!error) { 
+                document.getElementById('form-slots').reset(); 
+                cargarDatosSlots(); 
+            } else {
+                alert('Asegúrate de haber creado la tabla horarios_trabajo en Supabase.');
+            }
+        });
+
+        // Arrancar la aplicación
+        checkSession();
     </script>
 </body>
 </html>
