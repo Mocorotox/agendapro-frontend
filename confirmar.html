@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirmar cita — AgendaPro</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#F4F6F3;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.card{background:#fff;border-radius:24px;padding:48px 40px;max-width:440px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(26,36,23,0.13);}
+.icon{width:72px;height:72px;background:#EAF2EC;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:32px;}
+h1{font-size:28px;font-weight:700;color:#1A2417;margin-bottom:8px;}
+p{font-size:14px;color:#4E6055;line-height:1.6;margin-bottom:32px;}
+.btn{display:block;width:100%;padding:16px;background:#3A6B4A;color:#fff;border:none;border-radius:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;}
+.btn:hover{background:#5C9470;}
+.status{font-size:12px;color:#879E8E;margin-top:16px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon" id="icon">⏳</div>
+  <h1 id="title">Procesando...</h1>
+  <p id="desc">Un momento por favor.</p>
+  <a href="#" class="btn" id="btnNueva" style="display:none">Hacer otra reserva</a>
+  <div class="status" id="status"></div>
+</div>
+<script src="api/config.js"></script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const id = params.get('id');
+const tenant = params.get('tenant') || '';
+
+if(!id){
+  document.getElementById('icon').textContent = '❌';
+  document.getElementById('title').textContent = 'Link inválido';
+  document.getElementById('desc').textContent = 'Este link de confirmación no es válido.';
+} else {
+  fetch(AGENDAPRO_CONFIG.N8N_BASE_URL + AGENDAPRO_CONFIG.WEBHOOK_CONFIRMAR, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ id_cita: id, accion: 'confirmar' })
+  })
+  .then(r => r.json())
+  .then(() => {
+    document.getElementById('icon').textContent = '✅';
+    document.getElementById('title').textContent = '¡Cita confirmada!';
+    document.getElementById('desc').textContent = 'Tu asistencia quedó registrada. Te esperamos puntual.';
+    document.getElementById('btnNueva').style.display = 'block';
+    document.getElementById('btnNueva').href = `reservar.html?tenant=${tenant}`;
+    document.getElementById('status').textContent = 'ID: ' + id.slice(0,8) + '...';
+  })
+  .catch(() => {
+    document.getElementById('icon').textContent = '⚠️';
+    document.getElementById('title').textContent = 'Error de conexión';
+    document.getElementById('desc').textContent = 'No pudimos confirmar tu cita. Intenta de nuevo o escríbenos por WhatsApp.';
+  });
+}
+</script>
+</body>
+</html>
