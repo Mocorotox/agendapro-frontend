@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgendaPro — Reserve su cita</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root {
+  --bg:        #F4F6F3;
+  --surface:   #FFFFFF;
+  --surface-2: #EEF1EC;
+  --border:    #DDE3D8;
+  --accent:    #3A6B4A;
+  --accent-2:  #5C9470;
+  --accent-lt: #EAF2EC;
+  --accent-md: #C3DECA;
+  --text-1:    #1A2417;
+  --text-2:    #4E6055;
+  --text-3:    #879E8E;
+  --danger:    #C0392B;
+  --white:     #FFFFFF;
+  --font:      'Plus Jakarta Sans', system-ui, sans-serif;
+  --r-sm:      10px;
+  --r-md:      16px;
+  --r-lg:      24px;
+  --r-xl:      32px;
+  --shadow-sm: 0 1px 4px rgba(26,36,23,0.06);
+  --shadow-md: 0 8px 32px rgba(26,36,23,0.10);
+  --shadow-lg: 0 24px 64px rgba(26,36,23,0.13);
+}
+
+html,body {
+  width:100%; height:100%;
+  overflow:hidden;
+  background:var(--bg);
+  color:var(--text-1);
+  font-family:var(--font);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── BACKGROUND BLOBS ── */
+.blob {
+  position:fixed; border-radius:50%;
+  filter:blur(80px); pointer-events:none; z-index:0;
+  opacity:0.55;
+}
+.blob-1 {
+  width:520px; height:520px;
+  background:radial-gradient(circle, #C8DFC0, transparent 70%);
+  top:-160px; right:-80px;
+  animation:drift1 14s ease-in-out infinite;
+}
+.blob-2 {
+  width:380px; height:380px;
+  background:radial-gradient(circle, #D5E8D4, transparent 70%);
+  bottom:-100px; left:-60px;
+  animation:drift2 18s ease-in-out infinite;
+}
+.blob-3 {
+  width:240px; height:240px;
+  background:radial-gradient(circle, #B8D4C8, transparent 70%);
+  top:50%; left:55%;
+  animation:drift1 22s ease-in-out infinite reverse;
+}
+@keyframes drift1{0%,100%{transform:translate(0,0);}50%{transform:translate(-30px,24px);}}
+@keyframes drift2{0%,100%{transform:translate(0,0);}50%{transform:translate(24px,-30px);}}
+
+/* ── STAGE ── */
+#stage {
+  position:fixed; inset:0; z-index:10;
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+}
+
+/* ── CARD ── */
+.card {
+  position:absolute;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r-xl);
+  box-shadow:var(--shadow-lg);
+  padding:52px 56px;
+  width:min(580px, 100%);
+  opacity:0;
+  transform:translateY(28px) scale(0.98);
+  transition:opacity 0.5s cubic-bezier(0.16,1,0.3,1), transform 0.5s cubic-bezier(0.16,1,0.3,1);
+  pointer-events:none;
+}
+.card.active { opacity:1; transform:translateY(0) scale(1); pointer-events:all; }
+.card.exit-up { opacity:0; transform:translateY(-28px) scale(0.98); pointer-events:none; }
+
+/* ── TOP BAR ── */
+.card-top {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:40px;
+}
+
+.logo { display:flex; align-items:center; gap:9px; }
+
+.logo-mark {
+  width:34px; height:34px;
+  background:var(--accent);
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+}
+.logo-mark svg { width:16px; height:16px; fill:none; stroke:#fff; stroke-width:2; stroke-linecap:round; }
+
+.logo-name {
+  font-size:16px; font-weight:700;
+  color:var(--text-1); letter-spacing:-0.3px;
+}
+.logo-name span { color:var(--accent); }
+
+.step-pill {
+  background:var(--accent-lt);
+  color:var(--accent);
+  font-size:11px; font-weight:600;
+  padding:5px 12px; border-radius:100px;
+  letter-spacing:0.5px;
+}
+
+/* ── PROGRESS ── */
+.progress {
+  height:3px; background:var(--surface-2);
+  border-radius:3px; margin-bottom:44px;
+  overflow:hidden;
+}
+.progress-fill {
+  height:100%; background:var(--accent);
+  border-radius:3px;
+  transition:width 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+
+/* ── HEADINGS ── */
+.label {
+  font-size:11px; font-weight:600;
+  letter-spacing:1.5px; text-transform:uppercase;
+  color:var(--accent); margin-bottom:10px;
+}
+
+.title {
+  font-size:clamp(28px,4vw,40px);
+  font-weight:700; line-height:1.15;
+  color:var(--text-1); letter-spacing:-0.5px;
+  margin-bottom:8px;
+}
+
+.subtitle {
+  font-size:14px; font-weight:400;
+  color:var(--text-2); line-height:1.6;
+  margin-bottom:36px;
+}
+
+/* ── NAME INPUT ── */
+.name-wrap { margin-bottom:36px; }
+
+.name-input {
+  width:100%; border:none; outline:none;
+  background:transparent;
+  font-family:var(--font);
+  font-size:32px; font-weight:600;
+  color:var(--text-1); letter-spacing:-0.5px;
+  border-bottom:2px solid var(--border);
+  padding:12px 0; transition:border-color 0.25s;
+}
+.name-input::placeholder { color:var(--border); font-weight:400; }
+.name-input:focus { border-bottom-color:var(--accent); }
+
+/* ── CHOICES ── */
+.choices { display:grid; gap:10px; margin-bottom:36px; }
+.choices.g2 { grid-template-columns:1fr 1fr; }
+
+.choice {
+  padding:18px 20px;
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:var(--r-md);
+  cursor:pointer; text-align:left;
+  transition:all 0.18s ease;
+  position:relative;
+}
+.choice:hover {
+  border-color:var(--accent-md);
+  background:var(--accent-lt);
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-sm);
+}
+.choice.selected {
+  border-color:var(--accent);
+  background:var(--accent-lt);
+  box-shadow:0 0 0 3px rgba(58,107,74,0.1);
+}
+.choice.selected::after {
+  content:'✓';
+  position:absolute; top:14px; right:16px;
+  font-size:13px; font-weight:700;
+  color:var(--accent);
+}
+.choice-icon { font-size:22px; margin-bottom:8px; display:block; }
+.choice-name { font-size:14px; font-weight:600; color:var(--text-1); }
+.choice-desc { font-size:12px; font-weight:400; color:var(--text-3); margin-top:3px; }
+
+/* ── CALENDAR ── */
+.cal-wrap { margin-bottom:28px; }
+
+.cal-nav {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:16px;
+}
+.cal-month-label {
+  font-size:14px; font-weight:600;
+  color:var(--text-1); letter-spacing:-0.2px;
+}
+.cal-btn {
+  width:30px; height:30px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text-2); font-size:15px;
+  cursor:pointer; transition:all 0.15s;
+  display:flex; align-items:center; justify-content:center;
+}
+.cal-btn:hover { background:var(--accent-lt); border-color:var(--accent-md); color:var(--accent); }
+
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.cal-dname {
+  text-align:center; padding:6px 0;
+  font-size:11px; font-weight:600;
+  color:var(--text-3); text-transform:uppercase; letter-spacing:0.5px;
+}
+.cal-day {
+  aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  border-radius:8px; font-size:13px; font-weight:500;
+  color:var(--text-2); cursor:pointer; transition:all 0.15s;
+}
+.cal-day:hover:not(.empty):not(.past) { background:var(--accent-lt); color:var(--accent); }
+.cal-day.today { color:var(--accent); font-weight:700; }
+.cal-day.selected { background:var(--accent); color:#fff; font-weight:700; box-shadow:var(--shadow-sm); }
+.cal-day.past { opacity:0.3; cursor:not-allowed; }
+.cal-day.empty { cursor:default; }
+
+/* ── SLOTS ── */
+.slots-label { font-size:12px; font-weight:600; color:var(--text-2); margin-bottom:10px; letter-spacing:0.3px; }
+.slots { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:36px; }
+.slot {
+  padding:11px 6px; border:1.5px solid var(--border);
+  border-radius:var(--r-sm); text-align:center;
+  font-size:13px; font-weight:600; color:var(--text-2);
+  cursor:pointer; transition:all 0.15s;
+  background:var(--surface);
+}
+.slot:hover:not(.taken) { border-color:var(--accent-md); color:var(--accent); background:var(--accent-lt); }
+.slot.selected { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:var(--shadow-sm); }
+.slot.taken { background:var(--surface-2); color:var(--border); cursor:not-allowed; border-color:transparent; text-decoration:line-through; }
+
+/* ── FORM ── */
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:32px; }
+.f-full { grid-column:1/-1; }
+.f-label { font-size:11px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--text-3); margin-bottom:6px; display:block; }
+.f-input {
+  width:100%; padding:13px 16px;
+  background:var(--surface-2);
+  border:1.5px solid var(--border);
+  border-radius:var(--r-sm);
+  font-family:var(--font); font-size:14px; font-weight:500;
+  color:var(--text-1); outline:none;
+  transition:all 0.2s;
+}
+.f-input:focus { border-color:var(--accent); background:#fff; box-shadow:0 0 0 3px rgba(58,107,74,0.08); }
+.f-input::placeholder { color:var(--text-3); font-weight:400; }
+
+/* ── CTA ── */
+.cta {
+  width:100%; padding:17px 28px;
+  background:var(--accent); color:#fff;
+  border:none; border-radius:var(--r-md);
+  font-family:var(--font); font-size:15px; font-weight:700;
+  cursor:pointer; letter-spacing:-0.2px;
+  transition:all 0.2s cubic-bezier(0.16,1,0.3,1);
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  box-shadow:0 4px 16px rgba(58,107,74,0.3);
+}
+.cta:hover { background:var(--accent-2); transform:translateY(-2px); box-shadow:0 8px 24px rgba(58,107,74,0.35); }
+.cta:active { transform:translateY(0); }
+.cta-arr { transition:transform 0.2s; }
+.cta:hover .cta-arr { transform:translateX(4px); }
+
+.cta-ghost {
+  width:100%; padding:14px 28px;
+  background:transparent; color:var(--text-2);
+  border:1.5px solid var(--border);
+  border-radius:var(--r-md);
+  font-family:var(--font); font-size:15px; font-weight:600;
+  cursor:pointer; transition:all 0.18s;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  margin-top:10px;
+}
+.cta-ghost:hover { border-color:var(--accent-md); color:var(--accent); background:var(--accent-lt); }
+
+.back-btn {
+  background:none; border:none;
+  font-family:var(--font); font-size:13px; font-weight:500;
+  color:var(--text-3); cursor:pointer;
+  margin-top:16px; display:flex; align-items:center; gap:6px;
+  transition:color 0.15s; padding:0;
+}
+.back-btn:hover { color:var(--text-1); }
+
+/* ── SUCCESS ── */
+.success-ring {
+  width:72px; height:72px;
+  background:var(--accent-lt);
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 28px;
+  border:2px solid var(--accent-md);
+  font-size:28px;
+  animation:popIn 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}
+@keyframes popIn { from{transform:scale(0.5); opacity:0;} to{transform:scale(1); opacity:1;} }
+
+.success-title { font-size:38px; font-weight:700; text-align:center; letter-spacing:-0.5px; color:var(--text-1); margin-bottom:8px; }
+.success-sub { font-size:14px; color:var(--text-2); text-align:center; line-height:1.65; margin-bottom:32px; font-weight:400; }
+
+.summary {
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:20px 24px; margin-bottom:28px;
+}
+.s-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:9px 0; border-bottom:1px solid var(--border); font-size:13px;
+}
+.s-row:last-child { border-bottom:none; }
+.s-key { color:var(--text-3); font-weight:400; }
+.s-val { color:var(--text-1); font-weight:600; }
+.s-badge { background:var(--accent-lt); color:var(--accent); font-size:11px; font-weight:700; padding:3px 10px; border-radius:100px; letter-spacing:0.5px; }
+
+/* ── TRUST ROW ── */
+.trust {
+  display:flex; align-items:center; gap:20px;
+  padding-top:24px; margin-top:24px;
+  border-top:1px solid var(--surface-2);
+  flex-wrap:wrap;
+}
+.trust-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-3); font-weight:500; }
+.trust-item span { font-size:14px; }
+
+/* ── FOOTER ── */
+.sys-footer {
+  position:fixed; bottom:24px; left:0; right:0;
+  display:flex; justify-content:center;
+  font-size:11px; color:var(--text-3);
+  font-weight:400; letter-spacing:0.3px; z-index:20;
+}
+
+@media(max-width:600px){
+  .card{padding:36px 24px;}
+  .choices.g2{grid-template-columns:1fr;}
+  .slots{grid-template-columns:repeat(3,1fr);}
+  .form-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div id="stage">
+
+  <!-- STEP 0 -->
+  <div class="card active" id="step-0">
+    <div class="card-top">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <span class="logo-name">Agenda<span>Pro</span></span>
+      </div>
+      <span class="step-pill">Paso 1 de 5</span>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:20%"></div></div>
+    <div class="label">Bienvenida</div>
+    <h1 class="title">¿Cómo te<br>llamamos?</h1>
+    <p class="subtitle">Personalizaremos tu experiencia de reserva en segundos.</p>
+    <div class="name-wrap">
+      <input class="name-input" id="nameInput" type="text" placeholder="Tu nombre aquí..." autocomplete="off" spellcheck="false">
+    </div>
+    <button class="cta" onclick="goNext(0)">
+      Continuar <span class="cta-arr">→</span>
+    </button>
+    <div class="trust">
+      <div class="trust-item"><span>✓</span> Sin tarjeta requerida</div>
+      <div class="trust-item"><span>✓</span> Confirmación por WhatsApp</div>
+      <div class="trust-item"><span>✓</span> Cancela cuando quieras</div>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="card" id="step-1">
+    <div class="card-top">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <span class="logo-name">Agenda<span>Pro</span></span>
+      </div>
+      <span class="step-pill">Paso 2 de 5</span>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:40%"></div></div>
+    <div class="label">Servicio</div>
+    <h2 class="title">¿Qué servicio<br>necesitas?</h2>
+    <p class="subtitle">Selecciona la categoría que mejor describe tu visita.</p>
+    <div class="choices g2" id="serviceChoices">
+      <button class="choice" onclick="pick('service','consulta','Consulta médica',this)">
+        <span class="choice-icon">🩺</span>
+        <div class="choice-name">Consulta médica</div>
+        <div class="choice-desc">Primera vez o control</div>
+      </button>
+      <button class="choice" onclick="pick('service','estetica','Estética facial',this)">
+        <span class="choice-icon">✨</span>
+        <div class="choice-name">Estética facial</div>
+        <div class="choice-desc">Limpiezas y tratamientos</div>
+      </button>
+      <button class="choice" onclick="pick('service','dental','Salud dental',this)">
+        <span class="choice-icon">🦷</span>
+        <div class="choice-name">Salud dental</div>
+        <div class="choice-desc">Odontología general</div>
+      </button>
+      <button class="choice" onclick="pick('service','spa','Spa & bienestar',this)">
+        <span class="choice-icon">💆</span>
+        <div class="choice-name">Spa & bienestar</div>
+        <div class="choice-desc">Masajes y relajación</div>
+      </button>
+    </div>
+    <button class="cta" onclick="goNext(1)">Continuar <span class="cta-arr">→</span></button>
+    <button class="back-btn" onclick="goBack(1)">← Volver</button>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="card" id="step-2">
+    <div class="card-top">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <span class="logo-name">Agenda<span>Pro</span></span>
+      </div>
+      <span class="step-pill">Paso 3 de 5</span>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:60%"></div></div>
+    <div class="label">Fecha y hora</div>
+    <h2 class="title">¿Cuándo<br>nos visitas?</h2>
+    <div class="cal-wrap">
+      <div class="cal-nav">
+        <button class="cal-btn" onclick="prevMonth()">‹</button>
+        <span class="cal-month-label" id="calMonth">Junio 2026</span>
+        <button class="cal-btn" onclick="nextMonth()">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div class="slots-label">Horarios disponibles</div>
+    <div class="slots" id="slotsGrid">
+      <button class="slot" onclick="pickSlot(this,'09:00')">09:00</button>
+      <button class="slot taken">10:00</button>
+      <button class="slot" onclick="pickSlot(this,'11:00')">11:00</button>
+      <button class="slot taken">12:00</button>
+      <button class="slot" onclick="pickSlot(this,'14:00')">14:00</button>
+      <button class="slot" onclick="pickSlot(this,'15:00')">15:00</button>
+      <button class="slot taken">16:00</button>
+      <button class="slot" onclick="pickSlot(this,'17:00')">17:00</button>
+    </div>
+    <button class="cta" onclick="goNext(2)">Continuar <span class="cta-arr">→</span></button>
+    <button class="back-btn" onclick="goBack(2)">← Volver</button>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="card" id="step-3">
+    <div class="card-top">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <span class="logo-name">Agenda<span>Pro</span></span>
+      </div>
+      <span class="step-pill">Paso 4 de 5</span>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:80%"></div></div>
+    <div class="label">Tus datos</div>
+    <h2 class="title">Casi listo.<br>Un último paso.</h2>
+    <p class="subtitle">Para enviarte la confirmación por WhatsApp al instante.</p>
+    <div class="form-grid">
+      <div class="f-full">
+        <label class="f-label">WhatsApp</label>
+        <input class="f-input" id="phoneInput" type="tel" placeholder="+58 412 000 0000">
+      </div>
+      <div>
+        <label class="f-label">Cédula</label>
+        <input class="f-input" id="cedulaInput" type="text" placeholder="V-00000000">
+      </div>
+      <div>
+        <label class="f-label">Motivo (opcional)</label>
+        <input class="f-input" id="motivoInput" type="text" placeholder="Describe tu consulta">
+      </div>
+    </div>
+    <button class="cta" onclick="goNext(3)">Confirmar reserva <span class="cta-arr">→</span></button>
+    <button class="back-btn" onclick="goBack(3)">← Volver</button>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="card" id="step-4">
+    <div class="card-top">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <span class="logo-name">Agenda<span>Pro</span></span>
+      </div>
+      <span class="step-pill" style="background:#EAF7EE;color:#2D7A4F;">Confirmado ✓</span>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width:100%"></div></div>
+    <div class="success-ring">🗓️</div>
+    <h2 class="success-title">¡Todo listo!</h2>
+    <p class="success-sub">Tu cita fue registrada. Revisa tu WhatsApp<br>en los próximos 2 minutos para confirmar.</p>
+    <div class="summary" id="summaryBox">
+      <div class="s-row"><span class="s-key">Nombre</span><span class="s-val" id="sumName">—</span></div>
+      <div class="s-row"><span class="s-key">Servicio</span><span class="s-val" id="sumService">—</span></div>
+      <div class="s-row"><span class="s-key">Fecha</span><span class="s-val" id="sumDate">—</span></div>
+      <div class="s-row"><span class="s-key">Hora</span><span class="s-val" id="sumTime">—</span></div>
+      <div class="s-row"><span class="s-key">Estado</span><span class="s-badge">Pendiente confirmación</span></div>
+    </div>
+    <button class="cta-ghost" onclick="restart()">↺ Hacer otra reserva</button>
+  </div>
+
+</div>
+
+<div class="sys-footer">AgendaPro by DataTaverno · Sistema de reservas automatizado</div>
+
+<script>
+const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DAYS=['D','L','M','X','J','V','S'];
+let calDate=new Date(2026,5,1), selDay=null, selTime=null, currentStep=0;
+const state={name:'',service:'',serviceLabel:'',phone:'',cedula:''};
+
+// Calendar
+function renderCal(){
+  const m=calDate.getMonth(),y=calDate.getFullYear();
+  document.getElementById('calMonth').textContent=MONTHS[m]+' '+y;
+  const grid=document.getElementById('calGrid');
+  const first=new Date(y,m,1).getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const today=new Date();
+  let h=DAYS.map(d=>`<div class="cal-dname">${d}</div>`).join('');
+  for(let i=0;i<first;i++) h+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const isT=d===today.getDate()&&m===today.getMonth()&&y===today.getFullYear();
+    const isP=new Date(y,m,d)<new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    const isSel=selDay===d;
+    const cls=['cal-day',isT?'today':'',isP?'past':'',isSel?'selected':''].filter(Boolean).join(' ');
+    h+=`<div class="${cls}" onclick="pickDay(${d})">${d}</div>`;
+  }
+  grid.innerHTML=h;
+}
+renderCal();
+
+function prevMonth(){calDate.setMonth(calDate.getMonth()-1);selDay=null;renderCal();}
+function nextMonth(){calDate.setMonth(calDate.getMonth()+1);selDay=null;renderCal();}
+function pickDay(d){
+  const today=new Date();
+  if(new Date(calDate.getFullYear(),calDate.getMonth(),d)<new Date(today.getFullYear(),today.getMonth(),today.getDate())) return;
+  selDay=d; renderCal();
+}
+function pickSlot(el,t){
+  document.querySelectorAll('.slot').forEach(s=>s.classList.remove('selected'));
+  el.classList.add('selected'); selTime=t;
+}
+
+// Choices
+function pick(type,val,label,el){
+  document.querySelectorAll(`#serviceChoices .choice`).forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  state.service=val; state.serviceLabel=label;
+}
+
+// Navigation
+function shake(step){
+  const c=document.getElementById('step-'+step);
+  c.animate([{transform:'translateX(-8px)'},{transform:'translateX(8px)'},{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}],{duration:320,easing:'ease-out'});
+}
+
+function go(from,to){
+  const f=document.getElementById('step-'+from);
+  const t=document.getElementById('step-'+to);
+  f.classList.add('exit-up'); f.classList.remove('active');
+  setTimeout(()=>{f.classList.remove('exit-up'); t.classList.add('active'); currentStep=to;},420);
+}
+
+function goNext(s){
+  if(s===0){const n=document.getElementById('nameInput').value.trim();if(!n){shake(0);return;}state.name=n;go(0,1);}
+  else if(s===1){if(!state.service){shake(1);return;}go(1,2);}
+  else if(s===2){if(!selDay||!selTime){shake(2);return;}go(2,3);}
+  else if(s===3){
+    const p=document.getElementById('phoneInput').value.trim();
+    if(!p){shake(3);return;}
+    state.phone=p; state.cedula=document.getElementById('cedulaInput').value.trim();
+    buildSummary(); go(3,4);
+  }
+}
+function goBack(s){go(s,s-1);}
+
+function buildSummary(){
+  document.getElementById('sumName').textContent=state.name;
+  document.getElementById('sumService').textContent=state.serviceLabel;
+  document.getElementById('sumDate').textContent=selDay+' '+MONTHS[calDate.getMonth()]+' '+calDate.getFullYear();
+  document.getElementById('sumTime').textContent=selTime;
+}
+
+function restart(){
+  Object.keys(state).forEach(k=>state[k]='');
+  selDay=null; selTime=null;
+  document.getElementById('nameInput').value='';
+  document.getElementById('phoneInput').value='';
+  document.getElementById('cedulaInput').value='';
+  document.querySelectorAll('.choice,.slot').forEach(e=>e.classList.remove('selected'));
+  go(4,0);
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Enter')goNext(currentStep);});
+setTimeout(()=>document.getElementById('nameInput').focus(),600);
+</script>
+</body>
+</html>
