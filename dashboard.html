@@ -90,8 +90,85 @@
             </section>
 
             <section id="tab-slots" class="tab-content space-y-6">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
-                    <p class="text-slate-500">Configuración de rangos horarios de disponibilidad para sincronizar con Google Calendar.</p>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm lg:col-span-1">
+                        <div class="flex items-center space-x-3 mb-6">
+                            <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                <i data-lucide="clock" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Configurar Horario</h3>
+                                <p class="text-xs text-slate-500">Define las horas de trabajo disponibles</p>
+                            </div>
+                        </div>
+
+                        <form id="form-slots" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Profesional</label>
+                                <select id="slot-profesional" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                    <option value="">Selecciona un profesional...</option>
+                                    </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Día de la Semana</label>
+                                <select id="slot-dia" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                    <option value="Lunes">Lunes</option>
+                                    <option value="Martes">Martes</option>
+                                    <option value="Miércoles">Miércoles</option>
+                                    <option value="Jueves">Jueves</option>
+                                    <option value="Viernes">Viernes</option>
+                                    <option value="Sábado">Sábado</option>
+                                    <option value="Domingo">Domingo</option>
+                                </select>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Hora Inicio</label>
+                                    <input type="time" id="slot-inicio" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" value="09:00">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Hora Fin</label>
+                                    <input type="time" id="slot-fin" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" value="18:00">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Duración del Bloque</label>
+                                <select id="slot-duracion" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                    <option value="15">15 minutos</option>
+                                    <option value="30" selected>30 minutos</option>
+                                    <option value="45">45 minutos</option>
+                                    <option value="60">1 hora</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg text-sm transition-colors flex items-center justify-center">
+                                <i data-lucide="calendar-range" class="w-4 h-4 mr-1.5"></i> Establecer Disponibilidad
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm lg:col-span-2">
+                        <h3 class="text-lg font-bold text-slate-900 mb-1">Reglas de Disponibilidad Activas</h3>
+                        <p class="text-xs text-slate-500 mb-6">Horarios límite que n8n cruzará con Google Calendar para abrir agenda</p>
+                        
+                        <div class="overflow-x-auto border border-slate-100 rounded-lg">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
+                                        <th class="p-3">Profesional</th>
+                                        <th class="p-3">Día</th>
+                                        <th class="p-3">Horario</th>
+                                        <th class="p-3">Bloques</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-slots" class="text-sm divide-y divide-slate-100 text-slate-700">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -107,9 +184,82 @@
                 </div>
             </section>
 
-            <section id="tab-admin" class="tab-content space-y-6">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-xs">
-                    <p class="text-slate-500">Panel administrativo del tenant para dar de alta profesionales y catálogos de servicios.</p>
+            <section id="tab-admin" class="tab-content space-y-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex items-center space-x-3 mb-6">
+                            <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><i data-lucide="users" class="w-6 h-6"></i></div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Profesionales / Staff</h3>
+                                <p class="text-xs text-slate-500">Agrega el equipo que atiende en el negocio</p>
+                            </div>
+                        </div>
+                        <form id="form-profesional" class="space-y-4 mb-6">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nombre Completo</label>
+                                <input type="text" id="prof-nombre" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Ej. Dr. Alejandro Gómez">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Especialidad / Rol</label>
+                                <input type="text" id="prof-rol" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Ej. Odontólogo General">
+                            </div>
+                            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 rounded-lg text-sm transition-colors flex items-center justify-center">
+                                <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i> Guardar Profesional
+                            </button>
+                        </form>
+                        <div class="overflow-x-auto border border-slate-100 rounded-lg">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
+                                        <th class="p-3">Nombre</th>
+                                        <th class="p-3">Especialidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-profesionales" class="text-sm divide-y divide-slate-100 text-slate-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex items-center space-x-3 mb-6">
+                            <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><i data-lucide="activity" class="w-6 h-6"></i></div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Servicios / Tratamientos</h3>
+                                <p class="text-xs text-slate-500">Define el catálogo de servicios y sus costos</p>
+                            </div>
+                        </div>
+                        <form id="form-servicio" class="space-y-4 mb-6">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nombre del Servicio</label>
+                                <input type="text" id="serv-nombre" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Ej. Limpieza Dental Profunda">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Precio ($)</label>
+                                    <input type="number" id="serv-precio" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Ej. 45">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Duración (min)</label>
+                                    <input type="number" id="serv-duracion" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="Ej. 30">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 rounded-lg text-sm transition-colors flex items-center justify-center">
+                                <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i> Guardar Servicio
+                            </button>
+                        </form>
+                        <div class="overflow-x-auto border border-slate-100 rounded-lg">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
+                                        <th class="p-3">Servicio</th>
+                                        <th class="p-3">Duración</th>
+                                        <th class="p-3">Precio</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-servicios" class="text-sm divide-y divide-slate-100 text-slate-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </section>
 
