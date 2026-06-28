@@ -283,18 +283,22 @@
         }
 
         function unlockDashboard(user) {
-            loginOverlay.style.opacity = '0';
-            setTimeout(() => loginOverlay.style.display = 'none', 300);
-            userEmailDisplay.innerText = user.email;
-            
-            // Extraer el tenant_id de los metadatos del usuario creado en Supabase Auth
-            currentTenantId = "demo-clinica"; 
-            document.getElementById('tenant-slug').innerText = `Tenant: ${currentTenantId}`;
-            
-            // Disparar las lecturas en vivo
-            cargarDatosAdmin();
-            cargarDatosSlots();
-        }
+    // 1. Forzar ocultar el login sin importar fallos de animación
+    const overlay = document.getElementById('login-overlay');
+    if (overlay) overlay.style.display = 'none';
+    
+    // 2. Inyectar datos básicos protegiendo que los elementos existan
+    if (userEmailDisplay) userEmailDisplay.innerText = user.email;
+    
+    currentTenantId = "demo-clinica"; 
+    
+    const slugEl = document.getElementById('tenant-slug');
+    if (slugEl) slugEl.innerText = `Tenant: ${currentTenantId}`;
+    
+    // 3. Ejecutar las lecturas envolviéndolas en entornos seguros
+    try { cargarDatosAdmin(); } catch(e) { console.error("Error Admin:", e); }
+    try { cargarDatosSlots(); } catch(e) { console.error("Error Slots:", e); }
+}
 
         loginForm?.addEventListener('submit', async (e) => {
             e.preventDefault();
