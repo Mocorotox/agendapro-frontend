@@ -1,441 +1,369 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-slate-50">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AgendaPro Dashboard — Torre de Control</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        /* Control reactivo de visibilidad de las pestañas */
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-    </style>
-</head>
-<body class="h-full text-slate-800 antialiased font-sans flex">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgendaPro — Panel de Control</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Fraunces:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#F7F5F0;--surface:#FFFFFF;--surface-2:#F0EDE6;--border:#DDD8CE;
+  --accent:#2E5D3B;--accent-2:#4A8C5C;--accent-lt:#EBF3ED;
+  --text-1:#1C2B1E;--text-2:#4A5C4D;--text-3:#8A9E8D;
+  --amber:#D97706;--amber-lt:#FEF3C7;--red:#DC2626;--red-lt:#FEE2E2;--blue:#2563EB;--blue-lt:#DBEAFE;
+  --font:'DM Sans',system-ui,sans-serif;--font-serif:'Fraunces',Georgia,serif;
+  --shadow-sm:0 1px 3px rgba(28,43,30,0.06);--shadow-md:0 4px 16px rgba(28,43,30,0.08);--r:12px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text-1);font-family:var(--font);-webkit-font-smoothing:antialiased;}
 
-    <div id="login-overlay" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center opacity-100 transition-opacity duration-300">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-            <div class="text-center mb-8">
-                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <i data-lucide="lock" class="w-6 h-6"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-slate-900">Torre de Control</h2>
-                <p class="text-sm text-slate-500 mt-1">Ingresa con tus credenciales de AgendaPro</p>
-            </div>
-            <form id="login-form" class="space-y-5">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Email Corporativo</label>
-                    <input type="email" id="email" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" placeholder="ejemplo@negocio.com">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Contraseña</label>
-                    <input type="password" id="password" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm" placeholder="••••••••">
-                </div>
-                <div id="login-error" class="text-red-600 text-xs hidden bg-red-50 p-3 rounded-lg border border-red-100"></div>
-                <button type="submit" id="login-btn" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors shadow-sm">
-                    Ingresar al Panel
-                </button>
-            </form>
+/* AUTH LOADING */
+#authLoading{position:fixed;inset:0;z-index:500;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+.auth-mark{width:44px;height:44px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;animation:pulse 1.5s ease-in-out infinite;}
+.auth-mark svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(0.92);opacity:0.7;}}
+.auth-txt{font-size:14px;color:var(--text-3);}
+
+.app{display:grid;grid-template-columns:240px 1fr;grid-template-rows:auto 1fr;min-height:100vh;visibility:hidden;}
+.app.ready{visibility:visible;}
+
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-mark{width:32px;height:32px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;}
+.brand-mark svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;}
+.brand-name{font-family:var(--font-serif);font-size:18px;font-weight:600;letter-spacing:-0.3px;}
+.brand-name span{color:var(--accent);}
+.topbar-right{display:flex;align-items:center;gap:14px;}
+.tenant-badge{background:var(--accent-lt);color:var(--accent);font-size:12px;font-weight:600;padding:5px 12px;border-radius:100px;border:1px solid rgba(46,93,59,0.15);}
+.user-menu{display:flex;align-items:center;gap:8px;cursor:pointer;position:relative;}
+.avatar{width:34px;height:34px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;}
+.user-info{font-size:12px;}
+.user-name{font-weight:600;color:var(--text-1);}
+.user-role{color:var(--text-3);font-size:11px;}
+.logout-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--text-2);cursor:pointer;transition:all 0.15s;}
+.logout-btn:hover{border-color:var(--red);color:var(--red);background:var(--red-lt);}
+
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 16px;display:flex;flex-direction:column;gap:4px;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto;}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-3);padding:8px 12px 4px;margin-top:8px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);cursor:pointer;font-size:14px;font-weight:500;color:var(--text-2);transition:all 0.15s;border:none;background:none;width:100%;text-align:left;}
+.nav-item:hover{background:var(--surface-2);color:var(--text-1);}
+.nav-item.active{background:var(--accent-lt);color:var(--accent);font-weight:600;}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:0.7;}
+.nav-item.active svg{opacity:1;}
+.nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;}
+
+.main{padding:28px;overflow-y:auto;}
+.page{display:none;}
+.page.active{display:block;}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:16px;}
+.page-title{font-family:var(--font-serif);font-size:28px;font-weight:600;letter-spacing:-0.5px;}
+.page-title em{font-style:italic;color:var(--accent);}
+.page-sub{font-size:13px;color:var(--text-3);margin-top:4px;}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r);border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;transition:all 0.18s;}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(46,93,59,0.25);}
+.btn-primary:hover{background:var(--accent-2);transform:translateY(-1px);}
+.btn-outline{background:transparent;color:var(--text-2);border:1.5px solid var(--border);}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-lt);}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 22px;transition:box-shadow 0.15s;}
+.stat-card:hover{box-shadow:var(--shadow-md);}
+.stat-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:10px;}
+.stat-value{font-family:var(--font-serif);font-size:36px;font-weight:600;letter-spacing:-1px;line-height:1;}
+.stat-delta{font-size:12px;color:var(--accent);font-weight:500;margin-top:6px;}
+
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.table-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);}
+.table-title{font-size:15px;font-weight:600;}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;}
+.search-box input{background:none;border:none;outline:none;font-family:var(--font);font-size:13px;color:var(--text-1);width:180px;}
+table{width:100%;border-collapse:collapse;}
+thead th{text-align:left;padding:12px 22px;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--border);background:var(--surface-2);}
+tbody td{padding:14px 22px;font-size:13px;border-bottom:1px solid var(--surface-2);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:var(--surface-2);}
+
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600;}
+.badge-green{background:var(--accent-lt);color:var(--accent);}
+.badge-amber{background:var(--amber-lt);color:var(--amber);}
+.badge-red{background:var(--red-lt);color:var(--red);}
+.badge-blue{background:var(--blue-lt);color:var(--blue);}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+.form-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;}
+.form-sec-title{font-size:14px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.f-label{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-3);margin-bottom:5px;display:block;}
+.f-input{width:100%;padding:11px 14px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:9px;font-family:var(--font);font-size:14px;color:var(--text-1);outline:none;transition:all 0.2s;}
+.f-input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(46,93,59,0.08);}
+
+.empty{text-align:center;padding:50px 20px;color:var(--text-3);}
+.empty-icon{font-size:38px;margin-bottom:12px;}
+.empty-title{font-size:16px;font-weight:600;color:var(--text-2);margin-bottom:6px;}
+.empty-desc{font-size:13px;line-height:1.6;}
+
+@media(max-width:768px){.app{grid-template-columns:1fr;}.sidebar{display:none;}.stats-grid{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+
+<!-- AUTH LOADING -->
+<div id="authLoading">
+  <div class="auth-mark"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+  <div class="auth-txt">Verificando acceso...</div>
+</div>
+
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+      <span class="brand-name">Agenda<span>Pro</span></span>
+    </div>
+    <div class="topbar-right">
+      <span class="tenant-badge" id="tenantName">—</span>
+      <div class="user-menu">
+        <div class="avatar" id="avatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">—</div>
+          <div class="user-role" id="userRole">—</div>
         </div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Salir</button>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="sidebar-section">Principal</div>
+    <button class="nav-item active" onclick="showPage('hoy',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      Hoy <span class="nav-badge" id="hoyCnt">0</span>
+    </button>
+    <button class="nav-item" onclick="showPage('reservas',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Reservas
+    </button>
+    <button class="nav-item" onclick="showPage('clientes',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      Clientes
+    </button>
+    <div class="sidebar-section">Configuración</div>
+    <button class="nav-item" onclick="showPage('admin',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
+      Admin
+    </button>
+    <div style="margin-top:auto;padding-top:20px;border-top:1px solid var(--border);">
+      <a id="publicLinkNav" href="#" target="_blank" style="text-decoration:none;">
+        <button class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Ver página pública
+        </button>
+      </a>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- HOY -->
+    <div class="page active" id="page-hoy">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Hola, <em id="greetName">—</em></h1>
+          <p class="page-sub" id="todayDate">—</p>
+        </div>
+        <button class="btn btn-outline" onclick="loadCitas()">↻ Actualizar</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Citas hoy</div><div class="stat-value" id="statHoy">0</div><div class="stat-delta">actualizado ahora</div></div>
+        <div class="stat-card"><div class="stat-label">Confirmadas</div><div class="stat-value" id="statConf">0</div><div class="stat-delta">listas para atender</div></div>
+        <div class="stat-card"><div class="stat-label">Pendientes</div><div class="stat-value" id="statPend">0</div><div class="stat-delta">requieren confirmar</div></div>
+        <div class="stat-card"><div class="stat-label">Total clientes</div><div class="stat-value" id="statClientes">0</div><div class="stat-delta">registrados</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-head"><span class="table-title">Agenda de hoy</span></div>
+        <table>
+          <thead><tr><th>Hora</th><th>Cliente</th><th>Servicio</th><th>Profesional</th><th>Estado</th></tr></thead>
+          <tbody id="hoyTable"><tr><td colspan="5"><div class="empty"><div class="empty-icon">📅</div><div class="empty-title">Cargando...</div></div></td></tr></tbody>
+        </table>
+      </div>
     </div>
 
-    <aside class="w-64 bg-slate-950 text-slate-400 flex flex-col justify-between border-r border-slate-900 shrink-0">
-        <div>
-            <div class="h-16 flex items-center px-6 border-b border-slate-900 bg-slate-950/50">
-                <i data-lucide="layers" class="w-5 h-5 text-indigo-400 mr-2.5"></i>
-                <span class="text-base font-bold text-white tracking-wide">AgendaPro</span>
-            </div>
-            
-            <nav class="mt-6 px-4 space-y-1">
-                <button onclick="switchTab('calendario')" id="btn-calendario" class="nav-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors bg-indigo-600 text-white hover:bg-indigo-700">
-                    <i data-lucide="calendar" class="w-4 h-4 mr-3"></i> Calendario
-                </button>
-                
-                <button onclick="switchTab('slots')" id="btn-slots" class="nav-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors hover:bg-slate-900 hover:text-white">
-                    <i data-lucide="clock" class="w-4 h-4 mr-3"></i> Slots (Horarios)
-                </button>
-                
-                <button onclick="switchTab('reservas')" id="btn-reservas" class="nav-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors hover:bg-slate-900 hover:text-white">
-                    <i data-lucide="book-open" class="w-4 h-4 mr-3"></i> Reservas (CRM)
-                </button>
-                
-                <button onclick="switchTab('recordatorios')" id="btn-recordatorios" class="nav-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors hover:bg-slate-900 hover:text-white">
-                    <i data-lucide="message-square" class="w-4 h-4 mr-3"></i> Recordatorios
-                </button>
-                
-                <button onclick="switchTab('admin')" id="btn-admin" class="nav-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors hover:bg-slate-900 hover:text-white">
-                    <i data-lucide="sliders" class="w-4 h-4 mr-3"></i> Admin / Config
-                </button>
-            </nav>
+    <!-- RESERVAS -->
+    <div class="page" id="page-reservas">
+      <div class="page-header">
+        <div><h1 class="page-title">Reservas</h1><p class="page-sub">Todas las citas del negocio</p></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-head">
+          <span class="table-title">Todas las citas</span>
+          <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" placeholder="Buscar cliente..." id="searchInput" oninput="filterTable()">
+          </div>
         </div>
+        <table>
+          <thead><tr><th>Fecha</th><th>Hora</th><th>Cliente</th><th>Servicio</th><th>Profesional</th><th>Estado</th><th>Canal</th></tr></thead>
+          <tbody id="reservasTable"><tr><td colspan="7"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Cargando...</div></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
 
-        <div class="p-4 border-t border-slate-900 bg-slate-950/40">
-            <div class="flex items-center space-x-3 mb-3">
-                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white font-semibold text-xs">
-                    U
-                </div>
-                <div class="min-w-0 flex-1">
-                    <p class="text-xs font-semibold text-white truncate" id="user-email">Cargando...</p>
-                    <p class="text-[10px] text-slate-500 truncate" id="tenant-slug">Detectando negocio...</p>
-                </div>
-            </div>
-            <button id="btn-logout" class="w-full flex items-center justify-center px-3 py-2 border border-slate-800 text-xs font-medium rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition-colors">
-                <i data-lucide="log-out" class="w-3.5 h-3.5 mr-2"></i> Cerrar sesión
-            </button>
+    <!-- CLIENTES -->
+    <div class="page" id="page-clientes">
+      <div class="page-header">
+        <div><h1 class="page-title">Clientes</h1><p class="page-sub">Base de datos de tus clientes</p></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-head"><span class="table-title">Todos los clientes</span></div>
+        <table>
+          <thead><tr><th>Nombre</th><th>Teléfono</th><th>Cédula</th><th>Visitas</th><th>Registrado</th></tr></thead>
+          <tbody id="clientesTable"><tr><td colspan="5"><div class="empty"><div class="empty-icon">👥</div><div class="empty-title">Cargando...</div></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="page" id="page-admin">
+      <div class="page-header">
+        <div><h1 class="page-title">Administración</h1><p class="page-sub">Equipo, servicios y configuración</p></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="form-section">
+          <div class="form-sec-title">👥 Profesionales</div>
+          <div id="adminProfs"></div>
         </div>
-    </aside>
-
-    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-10 shrink-0">
-            <h1 id="page-title" class="text-lg font-bold text-slate-900">Calendario Global</h1>
-            <div class="flex items-center space-x-4">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-                    <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Sincronizado con Supabase
-                </span>
-            </div>
-        </header>
-
-        <div class="flex-1 overflow-y-auto p-8">
-            
-            <section id="tab-calendario" class="tab-content active space-y-6">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <p class="text-slate-500 text-sm">Aquí se integrará la vista interactiva de FullCalendar.io mapeando las citas en tiempo real de forma gratuita.</p>
-                </div>
-            </section>
-
-            <section id="tab-slots" class="tab-content space-y-6">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm lg:col-span-1">
-                        <div class="flex items-center space-x-3 mb-6">
-                            <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><i data-lucide="clock" class="w-5 h-5"></i></div>
-                            <div>
-                                <h3 class="text-base font-bold text-slate-900">Configurar Horario</h3>
-                                <p class="text-xs text-slate-500">Define los rangos de atención</p>
-                            </div>
-                        </div>
-                        <form id="form-slots" class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Profesional</label>
-                                <select id="slot-profesional" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500"></select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Día de la Semana</label>
-                                <select id="slot-dia" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500">
-                                    <option value="Lunes">Lunes</option><option value="Martes">Martes</option><option value="Miércoles">Miércoles</option>
-                                    <option value="Jueves">Jueves</option><option value="Viernes">Viernes</option><option value="Sábado">Sábado</option><option value="Domingo">Domingo</option>
-                                </select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Hora Inicio</label>
-                                    <input type="time" id="slot-inicio" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" value="09:00">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Hora Fin</label>
-                                    <input type="time" id="slot-fin" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" value="18:00">
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Duración del Bloque</label>
-                                <select id="slot-duracion" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500">
-                                    <option value="15">15 minutos</option><option value="30" selected>30 minutos</option><option value="45">45 minutos</option><option value="60">1 hora</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg text-sm transition-colors flex items-center justify-center">
-                                <i data-lucide="calendar-range" class="w-4 h-4 mr-1.5"></i> Establecer Disponibilidad
-                            </button>
-                        </form>
-                    </div>
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm lg:col-span-2">
-                        <h3 class="text-base font-bold text-slate-900 mb-1">Reglas de Disponibilidad Activas</h3>
-                        <p class="text-xs text-slate-500 mb-6">Límites horarios que n8n cruzará con Google Calendar</p>
-                        <div class="overflow-x-auto border border-slate-100 rounded-lg">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
-                                        <th class="p-3">Profesional</th><th class="p-3">Día</th><th class="p-3">Horario</th><th class="p-3">Bloques</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabla-slots" class="text-sm divide-y divide-slate-100 text-slate-700"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="tab-reservas" class="tab-content space-y-6">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <p class="text-slate-500 text-sm">Mapeo del CRM de clientes con filtros rápidos por estado (Confirmada, Pendiente, Cancelada).</p>
-                </div>
-            </section>
-
-            <section id="tab-recordatorios" class="tab-content space-y-6">
-                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <p class="text-slate-500 text-sm">Logs de auditoría del WF3 Cron de n8n indicando los WhatsApps automáticos enviados.</p>
-                </div>
-            </section>
-
-            <section id="tab-admin" class="tab-content space-y-8">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <div class="flex items-center space-x-3 mb-6">
-                            <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><i data-lucide="users" class="w-5 h-5"></i></div>
-                            <div>
-                                <h3 class="text-base font-bold text-slate-900">Profesionales / Staff</h3>
-                                <p class="text-xs text-slate-500">Agrega el equipo que atiende en el negocio</p>
-                            </div>
-                        </div>
-                        <form id="form-profesional" class="space-y-4 mb-6">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nombre Completo</label>
-                                <input type="text" id="prof-nombre" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. Dr. Alejandro Gómez">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Especialidad / Rol</label>
-                                <input type="text" id="prof-rol" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. Odontólogo General">
-                            </div>
-                            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 rounded-lg text-sm transition-colors flex items-center justify-center">
-                                <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i> Guardar Profesional
-                            </button>
-                        </form>
-                        <div class="overflow-x-auto border border-slate-100 rounded-lg">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
-                                        <th class="p-3">Nombre</th><th class="p-3">Especialidad</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabla-profesionales" class="text-sm divide-y divide-slate-100 text-slate-700"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <div class="flex items-center space-x-3 mb-6">
-                            <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><i data-lucide="activity" class="w-5 h-5"></i></div>
-                            <div>
-                                <h3 class="text-base font-bold text-slate-900">Servicios / Tratamientos</h3>
-                                <p class="text-xs text-slate-500">Define el catálogo de servicios y sus costos</p>
-                            </div>
-                        </div>
-                        <form id="form-servicio" class="space-y-4 mb-6">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nombre del Servicio</label>
-                                <input type="text" id="serv-nombre" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. Limpieza Dental Profunda">
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Precio ($)</label>
-                                    <input type="number" id="serv-precio" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. 45">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Duración (min)</label>
-                                    <input type="number" id="serv-duracion" required class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. 30">
-                                </div>
-                            </div>
-                            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 rounded-lg text-sm transition-colors flex items-center justify-center">
-                                <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i> Guardar Servicio
-                            </button>
-                        </form>
-                        <div class="overflow-x-auto border border-slate-100 rounded-lg">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
-                                        <th class="p-3">Servicio</th><th class="p-3">Duración</th><th class="p-3">Precio</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabla-servicios" class="text-sm divide-y divide-slate-100 text-slate-700"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
+        <div class="form-section">
+          <div class="form-sec-title">📋 Servicios</div>
+          <div id="adminSvcs"></div>
         </div>
-    </main>
+      </div>
+      <div class="form-section" style="margin-top:20px;">
+        <div class="form-sec-title">🔗 Link público de reservas</div>
+        <p style="font-size:13px;color:var(--text-3);margin-bottom:12px;">Comparte este link con tus clientes para que reserven 24/7.</p>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input class="f-input" id="publicLink" readonly style="flex:1;color:var(--accent);font-weight:500;">
+          <button class="btn btn-primary" onclick="copyLink()">Copiar</button>
+        </div>
+      </div>
+    </div>
 
-    <script>
-        // Credenciales Reales del Proyecto
-        const SUPABASE_URL = 'https://aaobxrvhktbfzwjeqkuh.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhb2J4cnZoa3RiZnp3amVxa3VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1ODQ5NTksImV4cCI6MjA5ODE2MDk1OX0.S9YkJj-c9IQPkAJsssn0OxE_FJRBaZ5JOrCFdVFkuhE';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  </main>
+</div>
 
-        let currentTenantId = null;
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="api/supabase.js"></script>
+<script>
+const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let TENANT = null;
+let CITAS = [];
 
-        // Elementos interactivos del DOM
-        const loginOverlay = document.getElementById('login-overlay');
-        const loginForm = document.getElementById('login-form');
-        const loginError = document.getElementById('login-error');
-        const loginBtn = document.getElementById('login-btn');
-        const userEmailDisplay = document.getElementById('user-email');
+// ── INIT con protección de auth ──
+(async () => {
+  TENANT = await requireAuth();   // redirige a login.html si no hay sesión
+  if(!TENANT) return;
 
-        lucide.createIcons();
+  // Poblar header
+  document.getElementById('tenantName').textContent = TENANT.name;
+  document.getElementById('userName').textContent = TENANT.nombre || TENANT.email;
+  document.getElementById('userRole').textContent = TENANT.rol;
+  document.getElementById('avatar').textContent = (TENANT.nombre || TENANT.email).charAt(0).toUpperCase();
+  document.getElementById('greetName').textContent = TENANT.nombre || 'usuario';
+  const link = `${location.origin}/reservar.html?tenant=${TENANT.slug}`;
+  document.getElementById('publicLink').value = link;
+  document.getElementById('publicLinkNav').href = link;
 
-        // CONTROL DE SESIÓN
-        async function checkSession() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                unlockDashboard(session.user);
-            }
-        }
+  const d = new Date();
+  const ds = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  document.getElementById('todayDate').textContent = `${ds[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]} de ${d.getFullYear()}`;
 
-        function unlockDashboard(user) {
-    // 1. Forzar ocultar el login sin importar fallos de animación
-    const overlay = document.getElementById('login-overlay');
-    if (overlay) overlay.style.display = 'none';
-    
-    // 2. Inyectar datos básicos protegiendo que los elementos existan
-    if (userEmailDisplay) userEmailDisplay.innerText = user.email;
-    
-    currentTenantId = "demo-clinica"; 
-    
-    const slugEl = document.getElementById('tenant-slug');
-    if (slugEl) slugEl.innerText = `Tenant: ${currentTenantId}`;
-    
-    // 3. Ejecutar las lecturas envolviéndolas en entornos seguros
-    try { cargarDatosAdmin(); } catch(e) { console.error("Error Admin:", e); }
-    try { cargarDatosSlots(); } catch(e) { console.error("Error Slots:", e); }
+  // Mostrar app, ocultar loading
+  document.getElementById('authLoading').style.display = 'none';
+  document.getElementById('app').classList.add('ready');
+
+  // Cargar datos reales (RLS filtra automáticamente por tenant)
+  await Promise.all([loadCitas(), loadClientes(), loadAdmin()]);
+})();
+
+// ── NAV ──
+function showPage(name, el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
 }
 
-        loginForm?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            loginBtn.innerText = 'Verificando...';
-            loginBtn.disabled = true;
-            loginError.classList.add('hidden');
+function estadoBadge(e){
+  const map={confirmada:'badge-green',pendiente:'badge-amber',cancelada:'badge-red',completada:'badge-blue',no_asistio:'badge-red'};
+  const lbl={confirmada:'Confirmada',pendiente:'Pendiente',cancelada:'Cancelada',completada:'Completada',no_asistio:'No asistió'};
+  return `<span class="badge ${map[e]||'badge-amber'}">${lbl[e]||e}</span>`;
+}
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+// ── CARGAR CITAS (Supabase directo + RLS) ──
+async function loadCitas(){
+  const { data, error } = await sb
+    .from('citas')
+    .select('*')
+    .eq('tenant_id', TENANT.tenant_id)
+    .order('fecha_hora_inicio', { ascending: true });
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){ console.error(error); return; }
+  CITAS = data || [];
 
-            if (error) {
-                loginError.innerText = "Credenciales incorrectas.";
-                loginError.classList.remove('hidden');
-                loginBtn.innerText = 'Ingresar al Panel';
-                loginBtn.disabled = false;
-            } else {
-                unlockDashboard(data.user);
-            }
-        });
+  const hoyStr = new Date().toISOString().split('T')[0];
+  const citasHoy = CITAS.filter(c => c.fecha_hora_inicio?.startsWith(hoyStr));
+  const conf = CITAS.filter(c => c.estado==='confirmada').length;
+  const pend = CITAS.filter(c => c.estado==='pendiente').length;
 
-        document.getElementById('btn-logout')?.addEventListener('click', async () => {
-            await supabase.auth.signOut();
-            window.location.reload();
-        });
+  document.getElementById('statHoy').textContent = citasHoy.length;
+  document.getElementById('statConf').textContent = conf;
+  document.getElementById('statPend').textContent = pend;
+  document.getElementById('hoyCnt').textContent = citasHoy.length;
 
-        // NAVEGACIÓN REACTIVA (TABS CORES)
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            document.getElementById(`tab-${tabId}`)?.classList.add('active');
+  renderHoy(citasHoy);
+  renderReservas(CITAS);
+}
 
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = "nav-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors hover:bg-slate-900 hover:text-white text-slate-400";
-            });
+function fmtHora(iso){ return new Date(iso).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'}); }
+function fmtFecha(iso){ return new Date(iso).toLocaleDateString('es-VE'); }
 
-            const activeBtn = document.getElementById(`btn-${tabId}`);
-            if (activeBtn) {
-                activeBtn.className = "nav-btn active w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors bg-indigo-600 text-white hover:bg-indigo-700";
-            }
+function renderHoy(citas){
+  const t=document.getElementById('hoyTable');
+  if(!citas.length){ t.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="empty-icon">🎉</div><div class="empty-title">Sin citas hoy</div><div class="empty-desc">Comparte tu link para recibir reservas.</div></div></td></tr>`; return; }
+  t.innerHTML = citas.map(c=>`<tr><td><strong>${fmtHora(c.fecha_hora_inicio)}</strong></td><td><strong>${c.nombre_cliente}</strong></td><td>${c.nombre_servicio}</td><td>${c.nombre_profesional}</td><td>${estadoBadge(c.estado)}</td></tr>`).join('');
+}
 
-            const titles = {
-                'calendario': 'Calendario Global',
-                'slots': 'Configuración de Slots de Disponibilidad',
-                'reservas': 'Reservas y Control CRM',
-                'recordatorios': 'Logs de Auditoría de WhatsApp',
-                'admin': 'Administración del Negocio'
-            };
-            document.getElementById('page-title').innerText = titles[tabId] || 'Dashboard';
-        }
+function renderReservas(citas){
+  const t=document.getElementById('reservasTable');
+  if(!citas.length){ t.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Sin reservas</div></div></td></tr>`; return; }
+  t.innerHTML = citas.map(c=>`<tr><td>${fmtFecha(c.fecha_hora_inicio)}</td><td><strong>${fmtHora(c.fecha_hora_inicio)}</strong></td><td>${c.nombre_cliente}</td><td>${c.nombre_servicio}</td><td>${c.nombre_profesional}</td><td>${estadoBadge(c.estado)}</td><td><span style="font-size:11px;color:var(--text-3);">${c.canal||'web'}</span></td></tr>`).join('');
+}
 
-        // CONTROL DE DATOS: MÓDULO ADMIN
-        async function cargarDatosAdmin() {
-            if (!currentTenantId) return;
+function filterTable(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('#reservasTable tr').forEach(r=>{ r.style.display=r.textContent.toLowerCase().includes(q)?'':'none'; });
+}
 
-            const { data: profesionales } = await supabase.from('profesionales').select('*');
-            if (profesionales) {
-                document.getElementById('tabla-profesionales').innerHTML = profesionales.map(p => `
-                    <tr class="hover:bg-slate-50/80 transition-colors">
-                        <td class="p-3 font-medium text-slate-900">${p.nombre}</td>
-                        <td class="p-3 text-slate-500">${p.rol || p.especialidad || ''}</td>
-                    </tr>
-                `).join('');
-            }
+// ── CARGAR CLIENTES ──
+async function loadClientes(){
+  const { data, error } = await sb.from('clientes').select('*').eq('tenant_id', TENANT.tenant_id).order('created_at',{ascending:false});
+  if(error){ console.error(error); return; }
+  document.getElementById('statClientes').textContent = (data||[]).length;
+  const t=document.getElementById('clientesTable');
+  if(!data||!data.length){ t.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="empty-icon">👥</div><div class="empty-title">Sin clientes aún</div></div></td></tr>`; return; }
+  t.innerHTML = data.map(c=>`<tr><td><strong>${c.nombre||'—'}</strong></td><td>${c.phone}</td><td>${c.cedula||'—'}</td><td>${c.visitas||0}</td><td>${fmtFecha(c.created_at)}</td></tr>`).join('');
+}
 
-            const { data: servicios } = await supabase.from('servicios').select('*');
-            if (servicios) {
-                document.getElementById('tabla-servicios').innerHTML = servicios.map(s => `
-                    <tr class="hover:bg-slate-50/80 transition-colors">
-                        <td class="p-3 font-medium text-slate-900">${s.nombre}</td>
-                        <td class="p-3 text-slate-500">${s.duracion} min</td>
-                        <td class="p-3 font-semibold text-slate-900">$${s.precio}</td>
-                    </tr>
-                `).join('');
-            }
-            lucide.createIcons();
-        }
+// ── CARGAR ADMIN ──
+async function loadAdmin(){
+  const [{data:profs},{data:svcs}] = await Promise.all([
+    sb.from('profesionales').select('*').eq('tenant_id',TENANT.tenant_id),
+    sb.from('servicios').select('*').eq('tenant_id',TENANT.tenant_id)
+  ]);
+  document.getElementById('adminProfs').innerHTML = (profs||[]).map(p=>`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><div><div style="font-size:14px;font-weight:600;">${p.nombre}</div><div style="font-size:12px;color:var(--text-3);">${p.especialidad||'Especialista'}</div></div><span class="badge badge-green">Activo</span></div>`).join('') || '<div style="font-size:13px;color:var(--text-3);padding:8px 0;">Sin profesionales</div>';
+  document.getElementById('adminSvcs').innerHTML = (svcs||[]).map(s=>`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);"><div><div style="font-size:14px;font-weight:600;">${s.nombre}</div><div style="font-size:12px;color:var(--text-3);">${s.duracion_minutos} min${s.precio?' · $'+Number(s.precio).toFixed(0):''}</div></div><span class="badge badge-green">Activo</span></div>`).join('') || '<div style="font-size:13px;color:var(--text-3);padding:8px 0;">Sin servicios</div>';
+}
 
-        document.getElementById('form-profesional')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const nombre = document.getElementById('prof-nombre').value;
-            const rol = document.getElementById('prof-rol').value;
-            const { error } = await supabase.from('profesionales').insert([{ nombre, rol, tenant_id: currentTenantId }]);
-            if (!error) { document.getElementById('form-profesional').reset(); cargarDatosAdmin(); cargarDatosSlots(); }
-        });
-
-        document.getElementById('form-servicio')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const nombre = document.getElementById('serv-nombre').value;
-            const precio = parseFloat(document.getElementById('serv-precio').value);
-            const duracion = parseInt(document.getElementById('serv-duracion').value);
-            const { error } = await supabase.from('servicios').insert([{ nombre, precio, duracion, tenant_id: currentTenantId }]);
-            if (!error) { document.getElementById('form-servicio').reset(); cargarDatosAdmin(); }
-        });
-
-        // CONTROL DE DATOS: MÓDULO SLOTS
-        async function cargarDatosSlots() {
-            if (!currentTenantId) return;
-
-            const { data: profesionales } = await supabase.from('profesionales').select('id, nombre');
-            if (profesionales) {
-                const selectProf = document.getElementById('slot-profesional');
-                selectProf.innerHTML = '<option value="">Selecciona un profesional...</option>' + 
-                    profesionales.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
-            }
-
-            const { data: horarios } = await supabase.from('horarios_trabajo').select('id, dia_semana, hora_inicio, hora_fin, duracion_bloque, profesionales(nombre)');
-            if (horarios) {
-                document.getElementById('tabla-slots').innerHTML = horarios.map(h => `
-                    <tr class="hover:bg-slate-50/80 transition-colors">
-                        <td class="p-3 font-medium text-slate-900">${h.profesionales?.nombre || 'General'}</td>
-                        <td class="p-3 text-slate-600">${h.dia_semana}</td>
-                        <td class="p-3 text-slate-500">${h.hora_inicio.substring(0,5)} a ${h.hora_fin.substring(0,5)}</td>
-                        <td class="p-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">${h.duracion_bloque} min</span></td>
-                    </tr>
-                `).join('');
-            }
-            lucide.createIcons();
-        }
-
-        document.getElementById('form-slots')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const profesional_id = document.getElementById('slot-profesional').value;
-            const dia_semana = document.getElementById('slot-dia').value;
-            const hora_inicio = document.getElementById('slot-inicio').value;
-            const hora_fin = document.getElementById('slot-fin').value;
-            const duracion_bloque = parseInt(document.getElementById('slot-duracion').value);
-
-            const { error } = await supabase.from('horarios_trabajo').insert([{ 
-                profesional_id, dia_semana, hora_inicio, hora_fin, duracion_bloque, tenant_id: currentTenantId 
-            }]);
-
-            if (!error) { document.getElementById('form-slots').reset(); cargarDatosSlots(); }
-        });
-
-        // Ejecución inicial
-        checkSession();
-    </script>
+function copyLink(){
+  navigator.clipboard.writeText(document.getElementById('publicLink').value).then(()=>alert('✅ Link copiado'));
+}
+</script>
 </body>
 </html>
